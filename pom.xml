@@ -20,9 +20,13 @@
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
+        <optimize>true</optimize>
+        <debug>true</debug>
         </configuration>
       </plugin>
     </plugins>
     </pluginManagement>
+<plugins>
+</plugins>
   </build>
 </project>

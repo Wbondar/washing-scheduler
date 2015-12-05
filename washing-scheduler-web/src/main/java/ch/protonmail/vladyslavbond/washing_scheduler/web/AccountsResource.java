@@ -3,7 +3,6 @@ package ch.protonmail.vladyslavbond.washing_scheduler.web;
 import java.net.URI;
 import java.sql.CallableStatement;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 

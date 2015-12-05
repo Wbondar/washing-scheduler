@@ -12,7 +12,7 @@ public enum NativeConnectionFactory {
 	private NativeConnectionFactory() {}
 	
 	public static Connection getConnection() {
-		return INSTANCE.getConnection();
+		return INSTANCE.getConnection0();
 	}
 	
 	private final Connection getConnection0() {
