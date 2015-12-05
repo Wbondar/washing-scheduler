@@ -81,6 +81,13 @@
         	<artifactId>thymeleaf-layout-dialect</artifactId>
         	<version>1.3.1</version>
         </dependency>
+        <dependency>
+        	<groupId>
+        		ch.protonmail.vladyslavbond.washing-scheduler
+        	</groupId>
+        	<artifactId>washing-scheduler-domain</artifactId>
+        	<version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>

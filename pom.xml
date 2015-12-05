@@ -9,6 +9,7 @@
   <modules>
     <module>washing-scheduler-datasource</module>
     <module>washing-scheduler-web</module>
+    <module>washing-scheduler-domain</module>
   </modules>
   <build>
     <pluginManagement>

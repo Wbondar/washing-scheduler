@@ -68,7 +68,12 @@ public class SessionsResource extends WashingSchedulerResource {
 								userId = resultSet.getShort(1);
 							}
 						}
-						service.setProperty(getHttpSession(), "id", userId);
+						HttpSession session = getHttpSession(false);
+						if (session != null) {
+							session.invalidate();
+						}
+						session = getHttpSession();
+						session.setAttribute("id", userId);
 						return Response.ok().entity("Well, hello, user of ID " + userId + "!").build();
 					}
 				}
