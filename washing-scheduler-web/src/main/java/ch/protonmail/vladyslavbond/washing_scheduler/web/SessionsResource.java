@@ -28,8 +28,8 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.WashingScheduler
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@Path("accounts")
-public class AccountsResource {
+@Path("sessions")
+public class SessionsResource {
 	@Context
 	private HttpServletResponse response;
 	@Context 
@@ -94,6 +94,24 @@ public class AccountsResource {
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
 	public Response create() {
-		return Response.ok().entity("<!DOCTYPE html><html><head></head><body><form method='POST' action='https://washing-scheduler.herokuapp.com/accounts/create/" + FACEBOOK.name() +"'><label>Sign in with Facebook.<input type='submit'/></label></form></body></html>").build();
+		return Response.ok().entity("<!DOCTYPE html><html><head></head><body><form method='POST' action='/sessions/create/" + FACEBOOK.name() +"'><label>Sign in with Facebook.<input type='submit'/></label></form></body></html>").build();
+	}
+	
+	@GET
+	@Path("destroy")
+	@Produces(MediaType.TEXT_HTML)
+	public Response getSessionTerminationForm() {
+		return Response.ok().entity("<!DOCTYPE html><html><head></head><body><main><article><h1>Terminate session.</h1><form method='POST' action='/sessions/destroy'><input type='submit'></form></article></main></body></html>").build();
+	}
+	
+	@POST
+	@Path("destroy")
+	@Produces(MediaType.TEXT_HTML)
+	public Response destroy() {
+		HttpSession session = request.getSession(false);
+		if (session != null) {
+			session.invalidate();
+		}
+		return create();
 	}
 }
