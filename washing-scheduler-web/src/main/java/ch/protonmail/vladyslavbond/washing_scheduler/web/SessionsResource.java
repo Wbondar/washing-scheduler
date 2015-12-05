@@ -32,20 +32,7 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("sessions")
-public class SessionsResource {
-	@Context
-	private HttpServletResponse response;
-	@Context 
-	private HttpServletRequest request;
-	
-	private HttpSession getSession() {
-		return request.getSession();
-	}
-	
-	private final static ObjectMapper getObjectMapper() {
-		return new ObjectMapper();
-	}
-	
+public class SessionsResource extends WashingSchedulerResource {
 	@POST
 	@Path("create/{service}")
 	public Response create(@PathParam("service") WashingSchedulerOAuthService service) throws Exception {
@@ -81,14 +68,14 @@ public class SessionsResource {
 								userId = resultSet.getShort(1);
 							}
 						}
-						service.setProperty(getSession(), "id", userId);
+						service.setProperty(getHttpSession(), "id", userId);
 						return Response.ok().entity("Well, hello, user of ID " + userId + "!").build();
 					}
 				}
 			}
 			return Response.seeOther(new URI("create")).build();
 		} catch (Exception e) {
-			e.printStackTrace(response.getWriter());
+			e.printStackTrace(getHttpServletResponse().getWriter());
 			throw e;
 		}
 	}
@@ -97,7 +84,7 @@ public class SessionsResource {
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
 	public Response create() throws IOException {
-		getViewFactory().process(request, response);
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
 		return Response.ok().build();
 	}
 	
@@ -105,7 +92,7 @@ public class SessionsResource {
 	@Path("destroy")
 	@Produces(MediaType.TEXT_HTML)
 	public Response getSessionTerminationForm() throws IOException {
-		getViewFactory().process(request, response);
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
 		return Response.ok().build();
 	}
 	
@@ -113,7 +100,7 @@ public class SessionsResource {
 	@Path("destroy")
 	@Produces(MediaType.TEXT_HTML)
 	public Response destroy() throws IOException {
-		HttpSession session = request.getSession(false);
+		HttpSession session = getHttpServletRequest().getSession(false);
 		if (session != null) {
 			session.invalidate();
 		}
