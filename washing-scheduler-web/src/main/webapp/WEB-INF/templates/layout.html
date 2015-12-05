@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title layout:title-pattern="$DECORATOR_TITLE | $CONTENT_TITLE" >Washing scheduler application.</title>
+	<link rel="stylesheet" type="text/css" media="all" 
+          href="../../css/layout.css" th:href="@{/css/layout.css}" />
+</head>
+<body>
+	<article>
+		<header>
+			<h1>Washing scheduler.</h1>
+		</header>
+		<nav>
+			<a href='/sessions/create'>Log in.</a>
+			<a href='/sessions/destroy'>Log out.</a>
+		</nav>
+		<main layout:fragment="main" >
+			Some random text here.
+		</main>
+		<aside layout:fragment="aside">
+		</aside>
+		<footer>
+			wbondarenko@programmer.net 2015
+		</footer>
+	</article>
+</body>
+</html>

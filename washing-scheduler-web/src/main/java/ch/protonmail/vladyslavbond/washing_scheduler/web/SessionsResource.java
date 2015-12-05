@@ -1,5 +1,6 @@
 package ch.protonmail.vladyslavbond.washing_scheduler.web;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -25,6 +26,8 @@ import org.scribe.model.Verifier;
 import static ch.protonmail.vladyslavbond.washing_scheduler.datasource.NativeConnectionFactory.*;
 
 import static ch.protonmail.vladyslavbond.washing_scheduler.web.WashingSchedulerOAuthService.*;
+
+import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -93,21 +96,23 @@ public class SessionsResource {
 	@GET
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
-	public Response create() {
-		return Response.ok().entity("<!DOCTYPE html><html><head></head><body><form method='POST' action='/sessions/create/" + FACEBOOK.name() +"'><label>Sign in with Facebook.<input type='submit'/></label></form></body></html>").build();
+	public Response create() throws IOException {
+		getViewFactory().process(request, response);
+		return Response.ok().build();
 	}
 	
 	@GET
 	@Path("destroy")
 	@Produces(MediaType.TEXT_HTML)
-	public Response getSessionTerminationForm() {
-		return Response.ok().entity("<!DOCTYPE html><html><head></head><body><main><article><h1>Terminate session.</h1><form method='POST' action='/sessions/destroy'><input type='submit'></form></article></main></body></html>").build();
+	public Response getSessionTerminationForm() throws IOException {
+		getViewFactory().process(request, response);
+		return Response.ok().build();
 	}
 	
 	@POST
 	@Path("destroy")
 	@Produces(MediaType.TEXT_HTML)
-	public Response destroy() {
+	public Response destroy() throws IOException {
 		HttpSession session = request.getSession(false);
 		if (session != null) {
 			session.invalidate();
