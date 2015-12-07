@@ -1,3 +1,3 @@
 #!/bin/sh
 source database.conf
-psql -U $USER -d $DATABASE
+psql -U $WASHING_SCHEDULER_DATABASE_USERNAME -d $WASHING_SCHEDULER_DATABASE

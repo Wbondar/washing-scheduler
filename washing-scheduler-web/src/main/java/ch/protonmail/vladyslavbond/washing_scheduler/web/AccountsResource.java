@@ -2,6 +2,7 @@ package ch.protonmail.vladyslavbond.washing_scheduler.web;
 
 import java.net.URI;
 import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,16 +18,14 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.*;
 
-import org.jooq.impl.DSL;
-import static org.jooq.impl.DSL.*;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Token;
 import org.scribe.model.Verb;
 import org.scribe.model.Verifier;
 
+import static ch.protonmail.vladyslavbond.washing_scheduler.datasource.NativeConnectionFactory.*;
+
 import static ch.protonmail.vladyslavbond.washing_scheduler.web.WashingSchedulerOAuthService.*;
-import static ch.protonmail.vladyslavbond.washing_scheduler.datasource.tables.ServiceAccounts.SERVICE_ACCOUNTS;
-import static ch.protonmail.vladyslavbond.washing_scheduler.datasource.tables.Users.USERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -64,24 +63,25 @@ public class AccountsResource {
 			org.scribe.model.Response oauthResponse = request.send();
 			if (oauthResponse.isSuccessful()) {
 				final String id = getObjectMapper().readTree(oauthResponse.getBody()).get("id").asText();
-				service.setProperty(getSession(), "id", id);
-				Class.forName("org.postgresql.Driver");
-				try (PreparedStatement preparedStatement = DriverManager.getConnection("<>", "<>", "<>")
-						.prepareStatement("SELECT owner_id FROM service_accounts WHERE account = ? LIMIT 1;");) {
-					preparedStatement.setString(1, service.name().concat(id));
-					ResultSet resultSet = preparedStatement.executeQuery();
-					resultSet.next();
-					Short userId = resultSet.getShort(1);
-					if (userId == null || userId <= 0) {
-						try (CallableStatement statement = DriverManager.getConnection("<>", "<>", "<>")
-						.prepareCall("{CALL user_create(?, ?)}");) {
-							statement.setObject(1, service.name());
-							statement.setObject(2, id);
-							resultSet = statement.executeQuery();
-							userId = resultSet.getShort(1);
+				try (Connection connection = getConnection();) {
+					try (PreparedStatement preparedStatement = connection
+							.prepareStatement("SELECT owner_id FROM service_accounts WHERE account = ? LIMIT 1;");) {
+						preparedStatement.setString(1, service.name().concat(id));
+						ResultSet resultSet = preparedStatement.executeQuery();
+						resultSet.next();
+						Short userId = resultSet.getShort(1);
+						if (userId == null || userId <= 0) {
+							try (CallableStatement statement = connection
+							.prepareCall("{CALL user_create(?, ?)}");) {
+								statement.setObject(1, service.name());
+								statement.setObject(2, id);
+								resultSet = statement.executeQuery();
+								userId = resultSet.getShort(1);
+							}
 						}
+						service.setProperty(getSession(), "id", userId);
+						return Response.ok().entity("Well, hello, user of ID " + userId + "!").build();
 					}
-					return Response.ok().entity("Well, hello, user of ID " + userId + "!").build();
 				}
 			}
 			return Response.seeOther(new URI("create")).build();

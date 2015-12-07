@@ -12,7 +12,6 @@
     <groupId>ch.protonmail.vladyslavbond.washing-scheduler</groupId>
     <artifactId>washing-scheduler-web</artifactId>
     <packaging>war</packaging>
-    <version>1.0-SNAPSHOT</version>
     <name>washing-scheduler-web</name>
 
     <dependencyManagement>
@@ -32,11 +31,10 @@
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-servlet</artifactId>
         </dependency>
-        <!-- uncomment this to get JSON support
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-moxy</artifactId>
-        </dependency> -->
+        </dependency>
 
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
@@ -66,50 +64,39 @@
         	<groupId>org.glassfish.jersey.media</groupId>
         	<artifactId>jersey-media-json-jackson</artifactId>
         </dependency>
+        <dependency>
+        	<groupId>
+        		ch.protonmail.vladyslavbond.washing-scheduler
+        	</groupId>
+        	<artifactId>washing-scheduler-datasource</artifactId>
+        	<version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>
         <finalName>washing-scheduler-web</finalName>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.5.1</version>
-                <inherited>true</inherited>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeScope>compile</includeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-maven-plugin</artifactId>
-                <version>${jetty.version}</version>
-                <configuration>
-                    <contextPath>/</contextPath>
-                    <webApp>
-                        <contextPath>/</contextPath>
-                        <webInfIncludeJarPattern>.*/.*jersey-[^/]\.jar$</webInfIncludeJarPattern>
-                    </webApp>
-                    <war>${project.build.directory}/${project.build.finalName}.war</war>
-                </configuration>
-            </plugin>
+		    <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-dependency-plugin</artifactId>
+		      <version>2.3</version>
+		      <executions>
+		        <execution>
+		          <phase>package</phase>
+		          <goals><goal>copy</goal></goals>
+		          <configuration>
+		            <artifactItems>
+		              <artifactItem>
+		                <groupId>org.eclipse.jetty</groupId>
+		                <artifactId>jetty-runner</artifactId>
+		                <version>9.3.3.v20150827</version>
+		                <destFileName>jetty-runner.jar</destFileName>
+		              </artifactItem>
+		            </artifactItems>
+		          </configuration>
+		        </execution>
+		       </executions>
+		    </plugin>
         </plugins>
     </build>
 
