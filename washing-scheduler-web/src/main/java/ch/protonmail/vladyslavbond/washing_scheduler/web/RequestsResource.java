@@ -37,8 +37,8 @@ public class RequestsResource extends WashingSchedulerResource {
 			return Response.seeOther(SESSIONS_CREATE_URI).build();
 		}
 		try (Connection connection = getConnection();) {
-			try (CallableStatement statement = connection.prepareCall("{CALL request_create(?, ?)}");) {
-				statement.setObject(1, getHttpSession().getAttribute("id"));
+			try (CallableStatement statement = connection.prepareCall("{CALL request_create(?::SMALLINT, ?::INTERVAL)}");) {
+				statement.setShort(1, (Short)getHttpSession().getAttribute("id"));
 				statement.setObject(2, reservationTime);
 				if (statement.execute()) {
 					/* TODO Implement redirection to queue list on successful reservation request. */

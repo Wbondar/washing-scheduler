@@ -8,13 +8,19 @@
   </parent>
     <groupId>ch.protonmail.vladyslavbond.washing-scheduler</groupId>
     <artifactId>washing-scheduler-domain</artifactId>
-    <version>1.0-SNAPSHOT</version>
     <name>washing-scheduler-domain</name>
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.testSource>1.8</maven.compiler.testSource>
-        <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    <dependencies>
+    	<dependency>
+    		<groupId>
+    			ch.protonmail.vladyslavbond.washing-scheduler
+    		</groupId>
+    		<artifactId>washing-scheduler-datasource</artifactId>
+    		<version>1.0-SNAPSHOT</version>
+    	</dependency>
+    	<dependency>
+    		<groupId>org.postgresql</groupId>
+    		<artifactId>postgresql</artifactId>
+    		<version>9.4-1206-jdbc42</version>
+    	</dependency>
+    </dependencies>
 </project>

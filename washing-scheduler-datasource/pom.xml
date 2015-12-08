@@ -10,13 +10,6 @@
     <groupId>ch.protonmail.vladyslavbond.washing-scheduler</groupId>
     <artifactId>washing-scheduler-datasource</artifactId>
     <name>washing-scheduler-datasource</name>
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.testSource>1.8</maven.compiler.testSource>
-        <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
      <dependencies>
        <dependency>
            <groupId>org.postgresql</groupId>
