@@ -9,4 +9,5 @@ sudo -u postgres createuser -I -P $WASHING_SCHEDULER_DATABASE_USERNAME
 echo 'Create database.'
 sudo -u postgres createdb --owner=$WASHING_SCHEDULER_DATABASE_USERNAME $WASHING_SCHEDULER_DATABASE
 echo 'Load database schema.'
-sudo -u postgres psql -U $WASHING_SCHEDULER_DATABASE_USERNAME -d $WASHING_SCHEDULER_DATABASE -f src/main/sql/baseline.sql
+psql -U $WASHING_SCHEDULER_DATABASE_USERNAME -d $WASHING_SCHEDULER_DATABASE -f src/main/sql/baseline.sql
+source database-populate.sh

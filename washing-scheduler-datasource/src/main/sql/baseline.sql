@@ -53,20 +53,14 @@ CREATE TABLE account_providers
 )
 ;
 
-CREATE TABLE accounts
+CREATE TABLE accounts 
 (
-      id          SMALLSERIAL NOT NULL PRIMARY KEY 
-    , provider_id SMALLINT    NOT NULL REFERENCES account_providers (id)
-    , external_id BIGINT      NOT NULL
+      id          SMALLSERIAL  NOT NULL PRIMARY KEY
+    , owner_id    SMALLINT     NOT NULL REFERENCES users (id)
+    , provider_id SMALLINT     NOT NULL REFERENCES account_providers (id)
+    , external_id VARCHAR(100) NOT NULL 
+    , UNIQUE (owner_id, provider_id)
     , UNIQUE (provider_id, external_id)
-)
-;
-
-CREATE TABLE user_accounts 
-(
-      user_id    SMALLINT NOT NULL REFERENCES users (id)
-    , account_id SMALLINT NOT NULL REFERENCES accounts (id)
-    , PRIMARY KEY (user_id, account_id)
 )
 ;
 
@@ -88,12 +82,12 @@ CREATE TABLE contacts
 
 CREATE TABLE requests
 (
-      id           SERIAL    NOT NULL PRIMARY KEY
-    , machine_id   SMALLINT  NOT NULL
-    , client_id    SMALLINT  NOT NULL
-    , requested_at TIMESTAMP NOT NULL CHECK (requested_at < locked_at)
-    , locked_at    TIMESTAMP NOT NULL CHECK (locked_at < unlocked_at)
-    , unlocked_at  TIMESTAMP NOT NULL
+      id                   SERIAL    NOT NULL PRIMARY KEY
+    , machine_id           SMALLINT  NOT NULL
+    , client_id            SMALLINT  NOT NULL
+    , occured_at           TIMESTAMP NOT NULL
+    , effective_at         TIMESTAMP NOT NULL CHECK (occured_at <= effective_at) 
+    , reservation_duration INTERVAL  NOT NULL
 )
 ;
 
@@ -109,7 +103,7 @@ CREATE TABLE requests_canceled
 CREATE VIEW reservations AS 
 SELECT requests.*, FALSE AS is_canceled
 FROM requests LEFT JOIN requests_canceled ON requests.id = requests_canceled.request_id
-ORDER BY machine_id, locked_at DESC  
+ORDER BY effective_at, machine_id DESC  
 ; 
 
 CREATE VIEW effective_reservations AS
@@ -117,21 +111,28 @@ SELECT *
 FROM reservations 
 WHERE is_canceled IS FALSE
 ;
-
 CREATE VIEW current_reservations AS 
 SELECT * 
 FROM effective_reservations 
-WHERE unlocked_at > NOW()
+WHERE (effective_at + reservation_duration) > NOW()
 ;
-
+/* 
+ * TODO Implement proper mechanizm for detecting 
+ * available machines and machines out of order. 
+ */
 CREATE VIEW available_machines AS 
 SELECT machines.*, COUNT(effective_reservations.id) AS load
 FROM machines 
-    LEFT JOIN machine_failures ON machines.id = machine_failures.machine_id
-    RIGHT JOIN machine_comebacks ON machine_failures.id = machine_comebacks.failure_id
-    JOIN effective_reservations ON effective_reservations.machine_id = machines.id
+    LEFT JOIN effective_reservations ON machines.id = effective_reservations.machine_id
 GROUP BY machines.id
-ORDER BY load ASC
+ORDER BY load
+;
+
+CREATE VIEW service_accounts AS
+ SELECT accounts.owner_id,
+    concat(account_providers.meta, accounts.external_id) AS account
+   FROM (accounts
+     JOIN account_providers ON ((accounts.provider_id = account_providers.id)))
 ;
 
 CREATE RULE machine_manufacturers_on_insert_title_to_upper_case AS ON INSERT
@@ -142,6 +143,70 @@ CREATE RULE machine_manufacturers_on_insert_title_to_upper_case AS ON INSERT
 CREATE RULE machine_manufacturers_on_update_title_to_upper_case AS ON UPDATE
     TO machine_manufacturers
     DO INSTEAD UPDATE machine_manufacturers SET id = NEW.id, title = UPPER(TRIM(NEW.title)) WHERE id = OLD.id
+;
+
+CREATE FUNCTION user_create(arg_account_provider_meta character varying, arg_external_account_id character varying) RETURNS smallint
+    LANGUAGE plpgsql STRICT SECURITY DEFINER
+    AS $$
+DECLARE 
+    var_new_user_id SMALLINT;
+BEGIN
+    INSERT INTO users (id) VALUES (DEFAULT)
+    RETURNING (SELECT id INTO var_new_user_id)
+    ;
+    INSERT INTO accounts (id, owner_id, provider_id, external_id) 
+    VALUES
+    ( 
+          DEFAULT
+        , var_new_user_id
+        , (SELECT id FROM account_providers WHERE account_providers.meta = arg_account_provider_meta LIMIT 1)
+        , arg_external_account_id
+    )
+    ;
+    RETURN var_new_user_id
+    ;
+END
+;
+$$;
+/*
+ * Makes request for machine with the lowest load for specified time for specified user.
+ */
+CREATE FUNCTION request_simple_create(arg_user_id SMALLINT, arg_reservation_duration INTERVAL) 
+RETURNS INTEGER
+LANGUAGE PLpgSQL
+STRICT
+SECURITY DEFINER
+AS
+$$
+DECLARE 
+    var_request_id   INTEGER   = NULL;
+    var_machine_id   SMALLINT  = (SELECT id FROM available_machines WHERE load = (SELECT MIN(load) FROM available_machines) LIMIT 1);
+    var_effective_at TIMESTAMP = NOW();
+BEGIN
+	IF (SELECT TRUE FROM requests WHERE machine_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration)) THEN
+        SELECT MAX(effective_at) + reservation_duration INTO var_effective_at
+        FROM effective_requests
+        WHERE machine_id = var_machine_id
+        ;
+	END IF 
+	;
+    INSERT INTO requests (id, client_id, machine_id, occured_at, effective_at, reservation_duration)
+    VALUES 
+    (
+          DEFAULT
+        , arg_user_id
+        , var_machine_id
+        , NOW()
+        , var_effective_at
+        , arg_reservation_duration
+    )
+    RETURNING (SELECT id INTO var_request_id)
+    ; 
+    RETURN var_request_id
+    ;
+END
+;
+$$
 ;
 
 COMMIT
