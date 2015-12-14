@@ -101,8 +101,16 @@ CREATE TABLE requests_canceled
 ;
 
 CREATE VIEW reservations AS 
-SELECT requests.*, FALSE AS is_canceled
-FROM requests LEFT JOIN requests_canceled ON requests.id = requests_canceled.request_id
+SELECT
+      r.id
+    , r.machine_id
+    , r.client_id
+    , r.occured_at
+    , r.effective_at
+    , r.effective_at + r.reservation_duration AS finishes_at
+    , r.reservation_duration
+    , FALSE AS is_canceled
+FROM requests AS r LEFT JOIN requests_canceled ON r.id = requests_canceled.request_id
 ORDER BY effective_at, machine_id DESC  
 ; 
 
@@ -111,11 +119,13 @@ SELECT *
 FROM reservations 
 WHERE is_canceled IS FALSE
 ;
+
 CREATE VIEW current_reservations AS 
 SELECT * 
 FROM effective_reservations 
 WHERE (effective_at + reservation_duration) > NOW()
 ;
+
 /* 
  * TODO Implement proper mechanizm for detecting 
  * available machines and machines out of order. 
@@ -171,7 +181,7 @@ $$;
 /*
  * Makes request for machine with the lowest load for specified time for specified user.
  */
-CREATE FUNCTION request_simple_create(arg_user_id SMALLINT, arg_reservation_duration INTERVAL) 
+CREATE FUNCTION request_create(arg_user_id SMALLINT, arg_reservation_duration INTERVAL) 
 RETURNS INTEGER
 LANGUAGE PLpgSQL
 STRICT
@@ -183,9 +193,9 @@ DECLARE
     var_machine_id   SMALLINT  = (SELECT id FROM available_machines WHERE load = (SELECT MIN(load) FROM available_machines) LIMIT 1);
     var_effective_at TIMESTAMP = NOW();
 BEGIN
-	IF (SELECT TRUE FROM requests WHERE machine_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration)) THEN
-        SELECT MAX(effective_at) + reservation_duration INTO var_effective_at
-        FROM effective_requests
+	IF (SELECT TRUE FROM requests WHERE machine_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration) LIMIT 1) THEN
+        SELECT finishes_at INTO var_effective_at
+        FROM effective_reservations
         WHERE machine_id = var_machine_id
         ;
 	END IF 

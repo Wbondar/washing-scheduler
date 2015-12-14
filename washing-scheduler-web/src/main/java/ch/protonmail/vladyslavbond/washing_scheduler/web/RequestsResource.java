@@ -1,12 +1,21 @@
 package ch.protonmail.vladyslavbond.washing_scheduler.web;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -14,26 +23,61 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import static ch.protonmail.vladyslavbond.washing_scheduler.datasource.NativeConnectionFactory.*;
+import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
 import ch.protonmail.vladyslavbond.washing_scheduler.domain.*;
+
+import org.thymeleaf.context.WebContext;
 
 @Path("requests")
 public class RequestsResource extends WashingSchedulerResource {
 	private final static URI SESSIONS_CREATE_URI;
+	private final static URI QUEUE_URI;
 	
 	static {
 		try {
 			SESSIONS_CREATE_URI = new URI("/sessions/create");
+			QUEUE_URI = new URI("/requests/queue");
 		} catch (URISyntaxException e) {
 			throw new AssertionError(e);
 		}
 	}
 	
+	@GET
+	@Path("queue")
+	@Produces(MediaType.TEXT_HTML)
+	public Response retrieve() throws IOException {
+		WebContext webContext = getContext(getHttpServletRequest(), getHttpServletResponse());
+		List<Map<String, Object>> requests = new ArrayList<>();
+		try (Connection connection = getConnection();) {
+			try (PreparedStatement statement = connection.prepareCall("SELECT * FROM current_reservations;");) {
+				try (ResultSet resultSet = statement.executeQuery();) {
+					ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+					while (resultSet.next()) {
+						Map<String, Object> tuple = new HashMap<>();
+						int i = resultSetMetaData.getColumnCount();
+						while (i > 0) {
+							tuple.put(resultSetMetaData.getColumnLabel(i), resultSet.getObject(i));
+							i--;
+						}
+						requests.add(tuple);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return Response.serverError().build();
+		}
+		webContext.setVariable("requests", requests);
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), webContext);
+		return Response.ok().build();
+	}
+	
 	@POST
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
-	public Response create(@FormParam("time") ReservationDuration reservationTime) throws URISyntaxException {
-		if (getHttpSession() == null || getHttpSession().getAttribute("id") == null || ((String)getHttpSession().getAttribute("id")).isEmpty()) {
+	public Response create(@FormParam("time") ReservationDuration reservationTime) throws URISyntaxException, IOException {
+		if (getHttpSession() == null || getHttpSession().getAttribute("id") == null) {
 			return Response.seeOther(SESSIONS_CREATE_URI).build();
 		}
 		try (Connection connection = getConnection();) {
@@ -41,16 +85,20 @@ public class RequestsResource extends WashingSchedulerResource {
 				statement.setShort(1, (Short)getHttpSession().getAttribute("id"));
 				statement.setObject(2, reservationTime);
 				if (statement.execute()) {
-					/* TODO Implement redirection to queue list on successful reservation request. */
-					return Response.ok().build();
+					return Response.seeOther(QUEUE_URI).build();
 				}
-				/* TODO Implement comprehensive error messages. */
-				return Response.serverError().build();
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
-			Response.serverError().build();
 		}
+		/* TODO Implement comprehensive error messages. */
+		return Response.serverError().build();
+	}
+	
+	@GET
+	@Produces(MediaType.TEXT_HTML)
+	public Response create() throws IOException {
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "index");
 		return Response.ok().build();
 	}
 }

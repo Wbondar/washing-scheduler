@@ -23,7 +23,7 @@ enum ViewFactory {
 		return INSTANCE;
 	}
 	
-	private void process
+	public void process
 	(
 		HttpServletRequest request,
 		HttpServletResponse response,
@@ -34,7 +34,17 @@ enum ViewFactory {
 		this.templateEngine.process(pathToTemplate, context, response.getWriter( ));
 	}
 	
-	private static WebContext getContext (HttpServletRequest request, HttpServletResponse response) {
+	public void process
+	(
+		HttpServletRequest request,
+		HttpServletResponse response,
+		IContext context
+	)
+	throws IOException {
+		process(request, response, getDefaultPathToTemplate(request), context);
+	}
+	
+	public static WebContext getContext (HttpServletRequest request, HttpServletResponse response) {
 		return new WebContext (request, response, request.getServletContext( ), request.getLocale( ));
 	}
 	
@@ -45,7 +55,6 @@ enum ViewFactory {
 		String pathToTemplate
 	)
 	throws IOException {
-
 		WebContext webContext = getContext(request, response);
 		Enumeration<String> names = request.getAttributeNames( );
 		while (names.hasMoreElements( )) {
@@ -61,10 +70,14 @@ enum ViewFactory {
 			HttpServletResponse response
 	)
 	throws IOException {
-		String pathToTemplate = request.getRequestURI().substring(request.getContextPath().length() + 1);
+		process(request, response, getDefaultPathToTemplate(request));
+	}
+
+	private String getDefaultPathToTemplate(final HttpServletRequest request) {
+		final String pathToTemplate = request.getRequestURI().substring(request.getContextPath().length() + 1);
 		if (pathToTemplate == null || pathToTemplate.isEmpty( )) {
-			pathToTemplate = "index";
+			return "index";
 		}
-		process(request, response, pathToTemplate);
+		return pathToTemplate;
 	}
 }

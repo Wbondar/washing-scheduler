@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html layout:decorator="layout">
+<head>
+	<title>Queue.</title>
+</head>
+<body>
+<main layout:fragment="main">
+	<article class='queue'>
+		<table>
+			<tr>
+				<th>№</th>
+				<th>Machine.</th>
+				<th>Client.</th>
+				<th>Issued at.</th>
+				<th>Locks at.</th>
+				<th>Unlocks at.</th>
+				<th>Duration.</th>
+			</tr>
+			<tr data-th-each='request : ${requests}'>
+				<td data-th-text="${request.get('id')}">1</td>
+				<td ><a data-th-href="@{/machines/${request.get('machine_id')}}">Go see the machine.</a></td>
+				<td ><a data-th-href="@{/users/${request.get('client_id')}}">Go see the client.</a></td>
+				<td data-th-text="${request.get('occured_at')}">Today.</td>
+				<td data-th-text="${request.get('effective_at')}">Today.</td>
+				<td data-th-text="${request.get('finishes_at')}">Today.</td>
+				<td data-th-text="${request.get('reservation_duration')}">30 minutes.</td>
+			</tr>
+		</table>
+	</article>
+</main>
+</body>
+</html>
