@@ -57,16 +57,21 @@ public class SessionsResource extends WashingSchedulerResource {
 							.prepareStatement("SELECT owner_id FROM service_accounts WHERE account = ? LIMIT 1;");) {
 						preparedStatement.setString(1, service.name().concat(id));
 						ResultSet resultSet = preparedStatement.executeQuery();
-						resultSet.next();
-						Short userId = resultSet.getShort(1);
-						if (userId == null || userId <= 0) {
+						Short userId = null;
+						if (resultSet.next()) {
+							userId = resultSet.getShort(1);	
+						} else {
 							try (CallableStatement statement = connection
 							.prepareCall("{CALL user_create(?, ?)}");) {
 								statement.setObject(1, service.name());
 								statement.setObject(2, id);
 								resultSet = statement.executeQuery();
+								resultSet.next();
 								userId = resultSet.getShort(1);
 							}
+						} 
+						if (userId == null || userId <= 0){
+							throw new AssertionError("Failed to retrieve identificator of a user while logging in.");
 						}
 						HttpSession session = getHttpSession(false);
 						if (session != null) {
