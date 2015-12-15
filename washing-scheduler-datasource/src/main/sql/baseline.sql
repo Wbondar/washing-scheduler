@@ -86,7 +86,7 @@ CREATE TABLE requests
     , machine_id           SMALLINT  NOT NULL
     , client_id            SMALLINT  NOT NULL
     , occured_at           TIMESTAMP NOT NULL
-    , effective_at         TIMESTAMP NOT NULL CHECK (occured_at <= effective_at) 
+    , effective_at         TIMESTAMP NOT NULL CHECK (effective_at >= occured_at)
     , reservation_duration INTERVAL  NOT NULL
 )
 ;
@@ -181,20 +181,20 @@ $$;
 /*
  * Makes request for machine with the lowest load for specified time for specified user.
  */
-CREATE FUNCTION request_create(arg_user_id SMALLINT, arg_reservation_duration INTERVAL) 
+CREATE FUNCTION request_create(arg_user_id SMALLINT, arg_effective_at TIMESTAMP WITH TIME ZONE, arg_reservation_duration INTERVAL) 
 RETURNS INTEGER
-LANGUAGE PLpgSQL
 STRICT
+LANGUAGE PLpgSQL
 SECURITY DEFINER
 AS
 $$
 DECLARE 
     var_request_id   INTEGER   = NULL;
     var_machine_id   SMALLINT  = (SELECT id FROM available_machines WHERE load = (SELECT MIN(load) FROM available_machines) LIMIT 1);
-    var_effective_at TIMESTAMP = NOW();
+    var_effective_at TIMESTAMP = COALESCE(arg_effective_at, NOW());
 BEGIN
 	IF (SELECT TRUE FROM requests WHERE machine_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration) LIMIT 1) THEN
-        SELECT finishes_at INTO var_effective_at
+        SELECT COALESCE(MAX(finishes_at), NOW()) INTO var_effective_at
         FROM effective_reservations
         WHERE machine_id = var_machine_id
         ;

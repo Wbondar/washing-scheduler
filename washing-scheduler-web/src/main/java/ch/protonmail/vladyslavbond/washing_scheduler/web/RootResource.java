@@ -15,7 +15,7 @@ public class RootResource extends WashingSchedulerResource {
 	@GET
 	@Produces(MediaType.TEXT_HTML)
 	public Response retrieve() throws IOException {
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "/requests/create");
 		return Response.ok().build();
 	}
 }

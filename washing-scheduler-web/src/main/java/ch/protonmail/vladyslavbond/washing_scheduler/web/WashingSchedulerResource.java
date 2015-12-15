@@ -5,6 +5,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.ws.rs.core.Context;
 
+import org.thymeleaf.context.WebContext;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 abstract class WashingSchedulerResource {
@@ -44,5 +46,9 @@ abstract class WashingSchedulerResource {
 			return null;
 		}
 		return request.getSession();
+	}
+	
+	public WebContext getWebContext() {
+		return ViewFactory.getContext(request, response);
 	}
 }

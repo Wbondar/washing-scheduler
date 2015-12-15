@@ -2,6 +2,7 @@ package ch.protonmail.vladyslavbond.washing_scheduler.web;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,6 +18,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.*;
+import javax.ws.rs.core.Response.Status;
 
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Token;
@@ -33,10 +35,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("sessions")
 public class SessionsResource extends WashingSchedulerResource {
+	private static final URI REQUESTS_CREATE;
+	
+	static {
+		try {
+			REQUESTS_CREATE = new URI("/requests/create");
+		} catch (URISyntaxException e) {
+			throw new AssertionError(e);
+		}
+	}
+
 	@POST
 	@Path("create/{service}")
 	public Response create(@PathParam("service") WashingSchedulerOAuthService service) throws Exception {
-		return Response.seeOther(new URI(service.getAuthorizationUrl(Token.empty())))
+		return Response
+				.seeOther(new URI(service.getAuthorizationUrl(Token.empty())))
 				.build();
 	}
 	
@@ -74,12 +87,18 @@ public class SessionsResource extends WashingSchedulerResource {
 							throw new AssertionError("Failed to retrieve identificator of a user while logging in.");
 						}
 						HttpSession session = getHttpSession(false);
+						URI myCallback = null;
 						if (session != null) {
+							myCallback = (URI)session.getAttribute("myCallback");
 							session.invalidate();
 						}
 						session = getHttpSession();
 						session.setAttribute("id", userId);
-						return Response.ok().entity("Well, hello, user of ID " + userId + "!").build();
+						if (myCallback != null) {
+							getHttpServletResponse().setHeader("Retry-After", "6");
+							return Response.temporaryRedirect(myCallback).build();
+						}
+						return Response.seeOther(REQUESTS_CREATE).build();
 					}
 				}
 			}

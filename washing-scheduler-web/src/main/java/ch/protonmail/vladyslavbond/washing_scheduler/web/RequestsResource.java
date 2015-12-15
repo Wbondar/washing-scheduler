@@ -3,13 +3,16 @@ package ch.protonmail.vladyslavbond.washing_scheduler.web;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,17 +30,20 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
 import ch.protonmail.vladyslavbond.washing_scheduler.domain.*;
 
+import org.scribe.model.Token;
 import org.thymeleaf.context.WebContext;
 
 @Path("requests")
 public class RequestsResource extends WashingSchedulerResource {
 	private final static URI SESSIONS_CREATE_URI;
 	private final static URI QUEUE_URI;
+	private static final URI REQUESTS_CREATE;
 	
 	static {
 		try {
 			SESSIONS_CREATE_URI = new URI("/sessions/create");
 			QUEUE_URI = new URI("/requests/queue");
+			REQUESTS_CREATE = new URI("/requests/create");
 		} catch (URISyntaxException e) {
 			throw new AssertionError(e);
 		}
@@ -78,11 +84,14 @@ public class RequestsResource extends WashingSchedulerResource {
 	@Produces(MediaType.TEXT_HTML)
 	public Response create(@FormParam("time") ReservationDuration reservationTime) throws URISyntaxException, IOException {
 		if (getHttpSession() == null || getHttpSession().getAttribute("id") == null) {
-			return Response.seeOther(SESSIONS_CREATE_URI).build();
+			getHttpSession().setAttribute("myCallback", REQUESTS_CREATE);
+			return Response
+					.seeOther(new URI(WashingSchedulerOAuthService.FACEBOOK.getAuthorizationUrl(Token.empty())))
+					.build();
 		}
 		try (Connection connection = getConnection();) {
-			try (CallableStatement statement = connection.prepareCall("{CALL request_create(?::SMALLINT, ?::INTERVAL)}");) {
-				statement.setShort(1, (Short)getHttpSession().getAttribute("id"));
+			try (CallableStatement statement = connection.prepareCall("{CALL request_create(?::SMALLINT, NOW(), ?::INTERVAL)}");) {
+				statement.setObject(1, getHttpSession().getAttribute("id"));
 				statement.setObject(2, reservationTime);
 				if (statement.execute()) {
 					return Response.seeOther(QUEUE_URI).build();
@@ -96,9 +105,10 @@ public class RequestsResource extends WashingSchedulerResource {
 	}
 	
 	@GET
+	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
 	public Response create() throws IOException {
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "index");
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
 		return Response.ok().build();
 	}
 }

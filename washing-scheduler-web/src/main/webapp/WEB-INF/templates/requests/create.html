@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html layout:decorator="layout">
+<head>
+	<title>Make a reservation request.</title>
+</head>
+<body>
+<main layout:fragment="main">
+	<section>
+		<h2>Request for first available machine.</h2>
+		<form method='POST' action='/requests/create'>
+			<fieldset>
+				<legend>Parameters of the request.</legend>
+				<select name='time'>
+					<option value='60'>Reserve for 60 (sixty) minutes.</option>
+					<option value='30'>Reserve for 30 (thirty) minutes.</option>
+					<option value='15'>Reserve for 15 (fifteen) minutes.</option>
+				</select>
+			</fieldset>
+			<input type='submit' />
+		</form>
+	</section>
+</main>
+</body>
+</html>
