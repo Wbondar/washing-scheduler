@@ -1,0 +1,51 @@
+body, body *
+{
+  margin: 0;
+  padding: 0;
+}
+
+body
+{
+  background-color: beige;
+}
+
+body > header
+{
+  background-color: black;
+  color: lightgrey;
+  text-align: right;
+}
+
+nav a, nav a:active, nav a:visited
+{
+  color: crimson;
+}
+
+main, aside
+{
+  background-color: white;
+  border: 1px gray solid;
+  color: black;
+  padding: 1%;
+  margin: 1%;
+}
+
+table, tr, td, th
+{
+  border: 1px solid black;  
+}
+
+aside 
+{
+  text-align: center;
+}
+
+body > footer 
+{
+  margin-top: 1in;
+  border-top: 1px dashed black;
+  width: 100%;
+  text-align: center;
+  color: gray;
+  bottom: 0px;
+}
