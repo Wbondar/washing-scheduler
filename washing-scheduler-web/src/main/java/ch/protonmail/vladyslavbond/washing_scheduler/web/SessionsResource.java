@@ -36,10 +36,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Path("sessions")
 public class SessionsResource extends WashingSchedulerResource {
 	private static final URI REQUESTS_CREATE;
+	private static final URI HOME;
 	
 	static {
 		try {
 			REQUESTS_CREATE = new URI("/requests/create");
+			HOME = new URI("/");
 		} catch (URISyntaxException e) {
 			throw new AssertionError(e);
 		}
@@ -133,6 +135,6 @@ public class SessionsResource extends WashingSchedulerResource {
 		if (session != null) {
 			session.invalidate();
 		}
-		return create();
+		return Response.seeOther(HOME).build();
 	}
 }

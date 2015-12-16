@@ -3,25 +3,32 @@
 <head>
 	<title layout:title-pattern="$DECORATOR_TITLE | $CONTENT_TITLE" >Washing scheduler application.</title>
 	<link rel="stylesheet" type="text/css" media="all" 
-          href="../../css/layout.css" th:href="@{/css/layout.css}" />
+          href="../../css/layout.css" data-th-href="@{/css/layout.css}" />
 </head>
 <body>
-	<article>
-		<header>
-			<h1>Washing scheduler.</h1>
-		</header>
-		<nav>
-			<a href='/sessions/create'>Log in.</a>
-			<a href='/sessions/destroy'>Log out.</a>
-		</nav>
-		<main layout:fragment="main" >
-			Some random text here.
-		</main>
-		<aside layout:fragment="aside">
-		</aside>
-		<footer>
-			wbondarenko@programmer.net 2015
-		</footer>
-	</article>
+	<header>
+		<h1>Washing scheduler.</h1>
+	</header>
+	<nav>
+		<a data-th-href='@{/about}' href='/about' >About.</a>
+		<a data-th-href='@{/requests/create}' href='/requests/create'>Make reservation.</a>
+		<a data-th-href='@{/requests/queue}' href='/requests/queue'>Show queue.</a>
+	</nav>
+	<aside layout:fragment="aside">
+		<form data-th-action='@{/sessions/create/FACEBOOK}' method='POST'  data-th-if='${session.id == null}' >
+			<input type='submit' value='Log in.'/>
+		</form>
+		<form data-th-action='@{/sessions/destroy}' method='POST' data-th-if='${session.id != null}' >
+			<input type='submit' value='Log out.'/>
+		</form>
+	</aside>
+	<main layout:fragment="main" >
+		Some random text here.
+	</main>
+	<footer>
+		<p>Vladyslav Bondarenko</p>
+		<p>wbondarenko@programmer.net</p>
+		<p>2016</p>
+	</footer>
 </body>
 </html>

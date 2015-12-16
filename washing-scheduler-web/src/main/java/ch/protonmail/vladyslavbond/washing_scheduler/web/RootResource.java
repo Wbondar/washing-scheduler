@@ -14,8 +14,16 @@ import java.io.IOException;
 public class RootResource extends WashingSchedulerResource {
 	@GET
 	@Produces(MediaType.TEXT_HTML)
-	public Response retrieve() throws IOException {
+	public Response home() throws IOException {
 		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "/requests/create");
+		return Response.ok().build();
+	}
+	
+	@GET
+	@Path("about")
+	@Produces(MediaType.TEXT_HTML)
+	public Response about() throws IOException {
+		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "index");
 		return Response.ok().build();
 	}
 }
