@@ -56,9 +56,11 @@ CREATE TABLE account_providers
 CREATE TABLE accounts 
 (
       id          SMALLSERIAL  NOT NULL PRIMARY KEY
-    , owner_id    SMALLINT     NOT NULL REFERENCES users (id)
-    , provider_id SMALLINT     NOT NULL REFERENCES account_providers (id)
+    , owner_id    SMALLINT     NOT NULL REFERENCES users (id)             ON DELETE RESTRICT ON UPDATE RESTRICT
+    , provider_id SMALLINT     NOT NULL REFERENCES account_providers (id) ON DELETE RESTRICT ON UPDATE RESTRICT
     , external_id VARCHAR(100) NOT NULL 
+    , token       TEXT         NOT NULL
+    , updated_at  TIMESTAMP    NOT NULL
     , UNIQUE (owner_id, provider_id)
     , UNIQUE (provider_id, external_id)
 )
@@ -138,42 +140,80 @@ GROUP BY machines.id
 ORDER BY load
 ;
 
-CREATE VIEW service_accounts AS
- SELECT accounts.owner_id,
-    concat(account_providers.meta, accounts.external_id) AS account
-   FROM (accounts
-     JOIN account_providers ON ((accounts.provider_id = account_providers.id)))
+/*
+ * `account_providers.meta` has to be in upper snake_case with alphanumeric characters only.
+ * Function `format_as_account_provider_meta` cleans up input string to match the format.
+ */
+CREATE FUNCTION format_as_account_provider_meta(arg_input TEXT) RETURNS TEXT
+LANGUAGE sql STRICT IMMUTABLE SECURITY INVOKER   
+AS $$
+SELECT UPPER(TRIM(regexp_replace(arg_input, '\W+', '', 'g')));
+;
+$$
 ;
 
-CREATE RULE machine_manufacturers_on_insert_title_to_upper_case AS ON INSERT
-    TO machine_manufacturers
-    DO INSTEAD INSERT INTO machine_manufacturers (id, title) SELECT NEW.id, UPPER(TRIM(NEW.title)) 
-;
-
-CREATE RULE machine_manufacturers_on_update_title_to_upper_case AS ON UPDATE
-    TO machine_manufacturers
-    DO INSTEAD UPDATE machine_manufacturers SET id = NEW.id, title = UPPER(TRIM(NEW.title)) WHERE id = OLD.id
-;
-
-CREATE FUNCTION user_create(arg_account_provider_meta character varying, arg_external_account_id character varying) RETURNS smallint
+/* 
+ * Creates an account in the system for user by credentials, provided by OAuth 2.0 protocol.
+ * Or updates token and external id of existing account.
+ * Returns id of newly created or existing user.
+ */
+CREATE FUNCTION user_update(arg_account_provider_meta character varying, arg_external_account_id character varying, arg_token TEXT, OUT arg_user_id SMALLINT)
     LANGUAGE plpgsql STRICT SECURITY DEFINER
     AS $$
 DECLARE 
-    var_new_user_id SMALLINT;
+    var_provider_id SMALLINT;
+    var_account_id  SMALLINT;
 BEGIN
-    INSERT INTO users (id) VALUES (DEFAULT)
-    RETURNING (SELECT id INTO var_new_user_id)
+	/* Fetch `provider_id` by meta name. */
+    SELECT id INTO var_provider_id 
+    FROM account_providers 
+    WHERE meta = format_as_account_provider_meta(arg_account_provider_meta)
     ;
-    INSERT INTO accounts (id, owner_id, provider_id, external_id) 
-    VALUES
-    ( 
-          DEFAULT
-        , var_new_user_id
-        , (SELECT id FROM account_providers WHERE account_providers.meta = arg_account_provider_meta LIMIT 1)
-        , arg_external_account_id
-    )
+    /* Create new provider in case one with provided meta name does not exist. */
+    IF NOT FOUND THEN
+        INSERT INTO account_providers (id, meta) 
+        VALUES (DEFAULT, format_as_account_provider_meta(arg_account_provider_meta))
+        RETURNING (SELECT id INTO var_provider_id)
+        ;
+    END IF 
     ;
-    RETURN var_new_user_id
+    /* Fetch account id by provider and external id. */
+    SELECT id INTO var_account_id 
+    FROM accounts 
+    WHERE CONCAT(provider_id, external_id) = CONCAT(var_provider_id, arg_external_account_id)
+    ;
+    /* 
+     * If account of given credentials exists, update it. 
+     * Create one otherwise.
+     */
+    IF FOUND THEN 
+        UPDATE accounts SET 
+	          external_id = arg_external_account_id
+	        , token = arg_token
+	        , updated_at = NOW()
+        WHERE id = var_account_id
+        ;
+        SELECT owner_id INTO arg_user_id 
+        FROM accounts 
+        WHERE id = var_account_id
+        ;
+    ELSE
+        INSERT INTO users (id)
+        VALUES (DEFAULT)
+        RETURNING (SELECT id INTO arg_user_id)
+        ;
+	    INSERT INTO accounts (id, owner_id, provider_id, external_id, token, updated_at) 
+	    VALUES
+	    ( 
+	          DEFAULT
+	        , arg_user_id
+	        , var_provider_id
+	        , arg_external_account_id
+	        , arg_token
+	        , NOW()
+	    )
+	    ;
+    END IF
     ;
 END
 ;
