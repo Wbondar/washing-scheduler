@@ -1,5 +1,6 @@
 package ch.protonmail.vladyslavbond.washing_scheduler.web;
 
+import java.sql.Types;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -7,6 +8,7 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -17,6 +19,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
 
@@ -31,6 +34,7 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.WashingScheduler
 
 import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("sessions")
@@ -58,56 +62,60 @@ public class SessionsResource extends WashingSchedulerResource {
 	@GET
 	@Path("callback/{service}")
 	@Produces(MediaType.TEXT_PLAIN)
-	public Response callback(@PathParam("service") WashingSchedulerOAuthService service, @QueryParam("code") String code) throws Exception {
-		try
+	public Response callback(@PathParam("service") WashingSchedulerOAuthService service, @QueryParam("code") String code) throws JsonProcessingException, IOException 
+	{
+		Token accessToken = service.getAccessToken(Token.empty(), new Verifier(code));
+		OAuthRequest request = new OAuthRequest(Verb.GET, service.getProperty("profile"));
+		service.signRequest(accessToken, request);
+		org.scribe.model.Response oauthResponse = request.send();
+		
+		if (!oauthResponse.isSuccessful()) 
 		{
-			Token accessToken = service.getAccessToken(Token.empty(), new Verifier(code));
-			OAuthRequest request = new OAuthRequest(Verb.GET, service.getProperty("profile"));
-			service.signRequest(accessToken, request);
-			org.scribe.model.Response oauthResponse = request.send();
-			if (oauthResponse.isSuccessful()) {
-				final String id = getObjectMapper().readTree(oauthResponse.getBody()).get("id").asText();
-				try (Connection connection = getConnection();) {
-					try (PreparedStatement preparedStatement = connection
-							.prepareStatement("SELECT owner_id FROM service_accounts WHERE account = ? LIMIT 1;");) {
-						preparedStatement.setString(1, service.name().concat(id));
-						ResultSet resultSet = preparedStatement.executeQuery();
-						Short userId = null;
-						if (resultSet.next()) {
-							userId = resultSet.getShort(1);	
-						} else {
-							try (CallableStatement statement = connection
-							.prepareCall("{CALL user_create(?, ?)}");) {
-								statement.setObject(1, service.name());
-								statement.setObject(2, id);
-								resultSet = statement.executeQuery();
-								resultSet.next();
-								userId = resultSet.getShort(1);
-							}
-						} 
-						if (userId == null || userId <= 0){
-							throw new AssertionError("Failed to retrieve identificator of a user while logging in.");
-						}
-						HttpSession session = getHttpSession(false);
-						URI myCallback = null;
-						if (session != null) {
-							myCallback = (URI)session.getAttribute("myCallback");
-							session.invalidate();
-						}
-						session = getHttpSession();
-						session.setAttribute("id", userId);
-						if (myCallback != null) {
-							getHttpServletResponse().setHeader("Retry-After", "6");
-							return Response.temporaryRedirect(myCallback).build();
-						}
-						return Response.seeOther(REQUESTS_CREATE).build();
-					}
+			return Response.serverError().build();
+		}
+		
+		final String externalId = getObjectMapper().readTree(oauthResponse.getBody()).get("id").asText();
+		try 
+		(
+			Connection connection = getConnection();
+		) 
+		{
+			try 
+			(
+				CallableStatement statement = connection.prepareCall("{CALL user_update(?, ?, ?, ?)}");
+			) 
+			{
+				statement.setObject(1, service.name());
+				statement.setObject(2, externalId);
+				statement.setObject(3, accessToken.getToken());
+				statement.registerOutParameter(4, Types.SMALLINT);
+				
+				statement.execute();
+				
+				Short internalId = statement.getShort(4);
+				if (internalId == null || internalId <= 0)
+				{
+					throw new RuntimeException("Internal id is missing.");
 				}
+				HttpSession session = getHttpSession(false);
+				URI myCallback = null;
+				if (session != null) 
+				{
+					myCallback = (URI)session.getAttribute("myCallback");
+					session.invalidate();
+				}
+				session = getHttpSession();
+				session.setAttribute("id", internalId);
+				if (myCallback != null) 
+				{
+					getHttpServletResponse().setHeader("Retry-After", "6");
+					return Response.temporaryRedirect(myCallback).build();
+				}
+				return Response.seeOther(REQUESTS_CREATE).build();	
 			}
-			return Response.seeOther(new URI("create")).build();
-		} catch (Exception e) {
-			e.printStackTrace(getHttpServletResponse().getWriter());
-			throw e;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new WebApplicationException("Failed to log in using OAuth.", e);
 		}
 	}
 
