@@ -30,7 +30,9 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
 import ch.protonmail.vladyslavbond.washing_scheduler.domain.*;
 
+import org.scribe.model.OAuthRequest;
 import org.scribe.model.Token;
+import org.scribe.model.Verb;
 import org.thymeleaf.context.WebContext;
 
 @Path("requests")
@@ -55,18 +57,69 @@ public class RequestsResource extends WashingSchedulerResource {
 	public Response retrieve() throws IOException {
 		WebContext webContext = getContext(getHttpServletRequest(), getHttpServletResponse());
 		List<Map<String, Object>> requests = new ArrayList<>();
-		try (Connection connection = getConnection();) {
-			try (PreparedStatement statement = connection.prepareCall("SELECT * FROM current_reservations;");) {
-				try (ResultSet resultSet = statement.executeQuery();) {
+		try (Connection connection = getConnection();) 
+		{
+			try 
+			(
+				PreparedStatement queueLookUpStatement = connection.prepareCall("SELECT * FROM current_reservations;");
+				PreparedStatement accountLookUpStatement = connection.prepareStatement("SELECT * FROM accounts JOIN account_providers ON accounts.provider_id = account_providers.id WHERE owner_id = ? LIMIT 1;");
+			) 
+			{
+				try (ResultSet resultSet = queueLookUpStatement.executeQuery();) 
+				{
 					ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-					while (resultSet.next()) {
+					while (resultSet.next()) 
+					{
+
 						Map<String, Object> tuple = new HashMap<>();
+						
 						int i = resultSetMetaData.getColumnCount();
 						while (i > 0) {
 							tuple.put(resultSetMetaData.getColumnLabel(i), resultSet.getObject(i));
 							i--;
 						}
+				
 						requests.add(tuple);
+						
+						try
+						{	
+							accountLookUpStatement.setObject(1, resultSet.getObject("client_id"));
+							try 
+							(
+								ResultSet accountResultSet = accountLookUpStatement.executeQuery();
+							) 
+							{
+								accountResultSet.next();
+								String accountProviderMeta = accountResultSet.getString("meta");
+								WashingSchedulerOAuthService service = WashingSchedulerOAuthService.valueOf(accountProviderMeta);
+								OAuthRequest request = new OAuthRequest(Verb.GET, String.format(service.getProperty("localizedProfile"), getHttpServletRequest().getLocale().toString()));
+								Token accessToken = new Token(accountResultSet.getString("token"), service.getProperty("apiSecret"));
+								service.signRequest(accessToken, request);
+								org.scribe.model.Response oauthResponse = request.send();
+								
+								if (oauthResponse.isSuccessful()) 
+								{
+									String clientName = getObjectMapper().readTree(oauthResponse.getBody()).get("name").asText();
+									if (clientName == null || clientName.isEmpty()) 
+									{
+										throw new RuntimeException ("Name is missing. Got instead: \"" + oauthResponse.getBody() + "\".");
+									}
+									tuple.put("name", clientName);
+
+									String link = getObjectMapper().readTree(oauthResponse.getBody()).get("link").asText();
+									if (link == null || link.isEmpty())
+									{
+										throw new RuntimeException ("Link is missing. Got instead: \"" + oauthResponse.getBody() + "\".");	
+									}
+									tuple.put("link", link);
+								}
+							}
+						} catch (SQLException e) {
+							e.printStackTrace();
+							tuple.put("name", "Unknown");
+							tuple.put("link", "/users/" + resultSet.getObject("client_id"));
+							continue;
+						}
 					}
 				}
 			}
