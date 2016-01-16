@@ -30,10 +30,14 @@ import static ch.protonmail.vladyslavbond.washing_scheduler.web.ViewFactory.*;
 
 import ch.protonmail.vladyslavbond.washing_scheduler.domain.*;
 
+import org.json.JSONObject;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Token;
 import org.scribe.model.Verb;
 import org.thymeleaf.context.WebContext;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("requests")
 public class RequestsResource extends WashingSchedulerResource {
@@ -53,10 +57,9 @@ public class RequestsResource extends WashingSchedulerResource {
 	
 	@GET
 	@Path("queue")
-	@Produces(MediaType.TEXT_HTML)
+	@Produces("text/html; charset=UTF-8")
 	public Response retrieve() throws IOException {
-		WebContext webContext = getContext(getHttpServletRequest(), getHttpServletResponse());
-		List<Map<String, Object>> requests = new ArrayList<>();
+		final List<Map<String, Object>> requests = new ArrayList<>();
 		try (Connection connection = getConnection();) 
 		{
 			try 
@@ -67,7 +70,8 @@ public class RequestsResource extends WashingSchedulerResource {
 			{
 				try (ResultSet resultSet = queueLookUpStatement.executeQuery();) 
 				{
-					ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+					final ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+					final ObjectMapper objectMapper = getObjectMapper();
 					while (resultSet.next()) 
 					{
 
@@ -97,19 +101,21 @@ public class RequestsResource extends WashingSchedulerResource {
 								service.signRequest(accessToken, request);
 								org.scribe.model.Response oauthResponse = request.send();
 								
+								
 								if (oauthResponse.isSuccessful()) 
 								{
-									String clientName = getObjectMapper().readTree(oauthResponse.getBody()).get("name").asText();
+									JsonNode myData = objectMapper.readTree(oauthResponse.getBody());
+									String clientName = myData.get("name").asText();
 									if (clientName == null || clientName.isEmpty()) 
 									{
-										throw new RuntimeException ("Name is missing. Got instead: \"" + oauthResponse.getBody() + "\".");
+										throw new RuntimeException ("Name is missing. Got instead: \"" + myData.asText() + "\".");
 									}
 									tuple.put("name", clientName);
 
-									String link = getObjectMapper().readTree(oauthResponse.getBody()).get("link").asText();
+									String link = myData.get("link").asText();
 									if (link == null || link.isEmpty())
 									{
-										throw new RuntimeException ("Link is missing. Got instead: \"" + oauthResponse.getBody() + "\".");	
+										throw new RuntimeException ("Link is missing. Got instead: \"" + myData.asText() + "\".");	
 									}
 									tuple.put("link", link);
 								}
@@ -127,9 +133,10 @@ public class RequestsResource extends WashingSchedulerResource {
 			e.printStackTrace();
 			return Response.serverError().build();
 		}
+		final WebContext webContext = getWebContext();
 		webContext.setVariable("requests", requests);
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), webContext);
-		return Response.ok().build();
+		getViewFactory().process(webContext);
+		return Response.ok().encoding("UTF-8").build();
 	}
 	
 	@POST

@@ -31,6 +31,7 @@ enum ViewFactory {
 		IContext context
 	)
 	throws IOException {
+		response.setCharacterEncoding("UTF-8");
 		this.templateEngine.process(pathToTemplate, context, response.getWriter( ));
 	}
 	
@@ -79,5 +80,9 @@ enum ViewFactory {
 			return "index";
 		}
 		return pathToTemplate;
+	}
+
+	public void process(WebContext webContext) throws IOException {
+		process(webContext.getHttpServletRequest(), webContext.getHttpServletResponse(), webContext);
 	}
 }

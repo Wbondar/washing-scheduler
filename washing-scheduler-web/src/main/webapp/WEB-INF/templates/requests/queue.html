@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html layout:decorator="layout">
 <head>
-	<title>Queue.</title>
+	<title data-th-text='#{title}'>Queue.</title>
 </head>
 <body>
 <main layout:fragment="main">
 	<article class='queue'>
 		<table>
 			<tr>
-				<th>#</th>
-				<th>Machine.</th>
-				<th>Client.</th>
-				<th>Issued at.</th>
-				<th>Locks at.</th>
-				<th>Unlocks at.</th>
-				<th>Duration.</th>
+				<th data-th-text='#{header.id}'>#</th>
+				<th data-th-text='#{header.machine}'>Machine.</th>
+				<th data-th-text='#{header.client}'>Client.</th>
+				<th data-th-text='#{header.whenissued}'>Issued at.</th>
+				<th data-th-text='#{header.whenlocks}'>Locks at.</th>
+				<th data-th-text='#{header.whenunlocks}'>Unlocks at.</th>
+				<th data-th-text='#{header.duration}'>Duration.</th>
 			</tr>
 			<tr data-th-each='request : ${requests}'>
 				<td data-th-text="${request.get('id')}">1</td>

@@ -17,4 +17,14 @@
         <filter-name>ch.protonmail.vladyslavbond.washing_scheduler.web.WashingSchedulerFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
+    
+  <filter>
+    <filter-name>UnicodeEnforcer</filter-name>
+    <filter-class>ch.protonmail.vladyslavbond.washing_scheduler.web.UnicodeEnforcer</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>UnicodeEnforcer</filter-name>
+    <url-pattern></url-pattern>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
 </web-app>
