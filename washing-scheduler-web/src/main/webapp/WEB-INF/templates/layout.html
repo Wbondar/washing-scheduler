@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
 <head>
-	<title layout:title-pattern="$CONTENT_TITLE | $DECORATOR_TITLE" >Washing scheduler application.</title>
+	<title data-layout-title-pattern="$CONTENT_TITLE | $DECORATOR_TITLE" >Washing scheduler.</title>
 	<meta charset="utf-8"></meta>
 	<link rel="stylesheet" type="text/css" media="all" 
           href="../../css/layout.css" data-th-href="@{/css/layout.css}" />
@@ -9,27 +9,28 @@
 </head>
 <body>
 	<header>
-		<h1>Washing scheduler.</h1>
+		<h1 data-th-text='#{header.header}'>Washing scheduler.</h1>
 	</header>
 	<nav>
-		<a data-th-href='@{/about}' href='/about' >About.</a>
-		<a data-th-href='@{/requests/create}' href='/requests/create'>Make reservation.</a>
-		<a data-th-href='@{/requests/queue}' href='/requests/queue'>Show queue.</a>
+		<a data-th-href='@{/about}' data-th-text='#{menu.about}' href='/about' >About.</a>
+		<a data-th-href='@{/requests/create}' data-th-text='#{menu.make}' href='/requests/create'>Make reservation.</a>
+		<a data-th-href='@{/requests/queue}' data-th-text='#{menu.queue}' href='/requests/queue'>Show queue.</a>
 	</nav>
-	<aside layout:fragment="aside">
+	<aside>
 		<form data-th-action='@{/sessions/create/FACEBOOK}' method='POST'  data-th-if='${session.id == null}' >
-			<input type='submit' value='Log in.'/>
+			<input type='submit' data-th-value='#{aside.login}' value='Log in.'/>
 		</form>
 		<form data-th-action='@{/sessions/destroy}' method='POST' data-th-if='${session.id != null}' >
-			<input type='submit' value='Log out.'/>
+			<input type='submit' data-th-value='#{aside.logout}' value='Log out.'/>
 		</form>
 	</aside>
-	<main layout:fragment="main" >
+	<main data-layout-fragment="main" >
 		Some random text here.
 	</main>
 	<footer>
-		<p>Vladyslav Bondarenko</p>
-		<p>wbondarenko@programmer.net</p>
+		<p data-th-text='#{footer.author}'>By Vladyslav Bondarenko.</p>
+		<p><a target='_blank' href='http://wbondar.github.io'>http://wbondar.github.io</a></p>
+		<p><a href='mailto:wbondarenko@programmer.net'>wbondarenko@programmer.net</a></p>
 		<p>2016</p>
 	</footer>
 </body>

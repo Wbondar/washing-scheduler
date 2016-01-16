@@ -23,6 +23,7 @@ enum ThymeleafTemplateEngine
         templateEngine = new TemplateEngine();
         templateEngine.addDialect(new LayoutDialect ( ));
         templateEngine.setTemplateResolver(templateResolver);
+        templateEngine.setMessageResolver(new CustomMessageResolver());
     }
     
     public static TemplateEngine getInstance ( )
