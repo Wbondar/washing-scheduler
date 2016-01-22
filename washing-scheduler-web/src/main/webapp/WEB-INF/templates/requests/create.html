@@ -2,6 +2,13 @@
 <html data-layout-decorator="layout">
 <head>
 	<title data-th-text='#{create.title}'>Make a reservation request.</title>
+	<link rel="stylesheet" type="text/css" media="all" 
+          href="../../css/pickadate.default.css" data-th-href="@{/css/pickadate/default.css}" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="../../js/pickadate/legacy.js" data-th-src="@{/js/pickadate/legacy.js}"></script>
+    <script src="../../js/pickadate/picker.js" data-th-src="@{/js/pickadate/picker.js}"></script>
+    <script src="../../js/pickadate/picker.date.js" data-th-src="@{/js/pickadate/picker.date.js}"></script>
+    <script src="../../js/pickadate/picker.time.js" data-th-src="@{/js/pickadate/picker.time.js}"></script>
 </head>
 <body>
 <main layout:fragment="main">
@@ -10,7 +17,32 @@
 		<form method='POST' action='/requests/create'>
 			<fieldset>
 				<legend data-th-text='#{create.legend}'>Parameters of the request.</legend>
-				<select name='time'>
+				<input type='date' id='datepicker' name='datepicker' />
+				<input type='time' id='timepicker' name='timepicker' />
+				<script>
+				    /*
+				     * http://amsul.ca/pickadate.js/date/
+				     */
+					$('#datepicker').pickadate({
+						  min:           true,
+						  max:           false,
+						  selectYears:   false,
+						  selectMonths:  true,
+						  formatSubmit:  'yyyy-mm-dd ',
+						  hiddenName:    true
+					});
+				    /*
+				     * http://amsul.ca/pickadate.js/time/
+				     */
+					$('#timepicker').pickatime({
+						  formatSubmit: 'HH:i:00.0',
+						  hiddenName:   true
+					});
+				</script>
+				<label for='duration' data-th-text='#{create.duration}'>
+					Reservation duration.
+				</label>
+				<select id='duration' name='duration'>
 					<option value='60' data-th-text='#{create.option60}'>Reserve for 1 (one) hour.</option>
 					<option value='30' data-th-text='#{create.option30}'>Reserve for 30 (thirty) minutes.</option>
 					<option value='15' data-th-text='#{create.option15}'>Reserve for 15 (fifteen) minutes.</option>

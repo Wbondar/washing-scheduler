@@ -30,7 +30,7 @@ main, aside
   margin: 1%;
 }
 
-table, tr, td, th
+.queue table, .queue tr, .queue td, .queue th
 {
   border: 1px solid black;  
 }
