@@ -22,8 +22,17 @@
 		<form method='POST' action='/requests/create'>
 			<fieldset>
 				<legend data-th-text='#{create.legend}'>Parameters of the request.</legend>
+				<label for='datepicker' data-th-text='#{create.datepicker}'>
+					Day of month to reserve.
+				</label>
 				<input type='date' id='datepicker' name='datepicker' />
+				<label for='timepicker' data-th-text='#{create.timepicker}'>
+					Time of date to reserve.
+				</label>
 				<input type='time' id='timepicker' name='timepicker' />
+				<label for='duration' data-th-text='#{create.duration}'>
+					Reservation duration.
+				</label>
 				<script>
 				    /*
 				     * http://amsul.ca/pickadate.js/date/
@@ -44,9 +53,6 @@
 						  hiddenName:   true
 					});
 				</script>
-				<label for='duration' data-th-text='#{create.duration}'>
-					Reservation duration.
-				</label>
 				<select id='duration' name='duration'>
 					<option value='60' data-th-text='#{create.option60}'>Reserve for 1 (one) hour.</option>
 					<option value='30' data-th-text='#{create.option30}'>Reserve for 30 (thirty) minutes.</option>
