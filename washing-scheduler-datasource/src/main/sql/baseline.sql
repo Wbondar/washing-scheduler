@@ -1,43 +1,82 @@
 START TRANSACTION
 ;
 
-CREATE TABLE machine_manufacturers
+CREATE TABLE goody_types
 (
-      id    SMALLSERIAL  NOT NULL PRIMARY KEY
-    , title VARCHAR(100) NOT NULL UNIQUE
+      id   SMALLSERIAL PRIMARY KEY
+    , meta VARCHAR(10) NOT NULL UNIQUE
 )
 ;
 
-CREATE TABLE machine_models
+CREATE TABLE goodies
 (
-      id              SMALLSERIAL  NOT NULL PRIMARY KEY
-    , manufacturer_id SMALLINT     NOT NULL REFERENCES machine_manufacturers (id)
-    , code            VARCHAR(100) NOT NULL UNIQUE
+      id      SMALLSERIAL PRIMARY KEY
+    , type_id SMALLINT NOT NULL 
+        REFERENCES goody_types (id) 
+            ON DELETE RESTRICT
+            ON UPDATE RESTRICT 
+    , meta    VARCHAR(10) NOT NULL
+    , UNIQUE (type_id, id)
+    , UNIQUE (type_id, meta)
 )
 ;
 
-CREATE TABLE machines
+CREATE TABLE goody_traits
 (
-      id              SMALLSERIAL NOT NULL PRIMARY KEY
-    , model_id        SMALLINT    NOT NULL REFERENCES machine_models (id)
+      id   SMALLSERIAL PRIMARY KEY
+    , meta VARCHAR(10) NOT NULL UNIQUE
 )
 ;
 
-CREATE TABLE machine_failures
+CREATE TABLE goodies_traits
 (
-      id          SMALLSERIAL NOT NULL PRIMARY KEY
-    , machine_id  SMALLINT    NOT NULL REFERENCES machines (id)
-    , occured_at  TIMESTAMP   NOT NULL
-    , UNIQUE (machine_id, occured_at)
+      goody_id SMALLINT NOT NULL 
+          REFERENCES goodies (id)
+              ON DELETE CASCADE
+              ON UPDATE CASCADE
+    , trait_id SMALLINT NOT NULL
+          REFERENCES goody_traits (id)
+              ON DELETE CASCADE
+              ON UPDATE CASCADE
+    , PRIMARY KEY (goody_id, trait_id)
 )
 ;
 
-CREATE TABLE machine_comebacks
+CREATE TABLE goody_statuses
 (
-      failure_id SMALLINT  NOT NULL PRIMARY KEY
-    , occured_at TIMESTAMP NOT NULL
-    , FOREIGN KEY (failure_id) REFERENCES machine_failures (id)
+      id   SMALLSERIAL PRIMARY KEY
+    , meta VARCHAR(10) NOT NULL UNIQUE
 )
+;
+
+CREATE TABLE goody_status_modifications
+(
+      id           SERIAL                   PRIMARY KEY
+    , effective_at TIMESTAMP WITH TIME ZONE NOT NULL
+    , goody_id     SMALLINT                 NOT NULL
+          REFERENCES goodies (id)
+              ON DELETE RESTRICT
+              ON UPDATE RESTRICT
+    , status_id    SMALLINT                 NOT NULL
+          REFERENCES goody_statuses (id)
+              ON DELETE RESTRICT
+              ON UPDATE RESTRICT
+    , UNIQUE (goody_id, effective_at)
+)
+;
+
+CREATE VIEW goodies_statuses AS 
+SELECT g.id, m.status_id
+FROM goodies AS g
+    JOIN goody_status_modifications AS m ON g.id = m.goody_id
+WHERE effective_at = (SELECT MAX(effective_at) FROM goody_status_modifications WHERE goody_id = g.id AND effective_at <= NOW())
+;
+
+CREATE VIEW available_goodies AS 
+SELECT goodies.* 
+FROM goodies
+    JOIN goodies_statuses ON goodies.id = goodies_statuses.id
+WHERE status_id = (SELECT id FROM goody_statuses WHERE meta = 'AVAIL')
 ;
 
 CREATE TABLE users
@@ -85,8 +124,8 @@ CREATE TABLE contacts
 CREATE TABLE requests
 (
       id                   SERIAL    NOT NULL PRIMARY KEY
-    , machine_id           SMALLINT  NOT NULL
-    , client_id            SMALLINT  NOT NULL
+    , goody_id             SMALLINT  NOT NULL REFERENCES goodies (id)
+    , client_id            SMALLINT  NOT NULL REFERENCES users (id)
     , occured_at           TIMESTAMP NOT NULL
     , effective_at         TIMESTAMP NOT NULL CHECK (effective_at >= occured_at)
     , reservation_duration INTERVAL  NOT NULL
@@ -105,7 +144,7 @@ CREATE TABLE requests_canceled
 CREATE VIEW reservations AS 
 SELECT
       r.id
-    , r.machine_id
+    , r.goody_id
     , r.client_id
     , r.occured_at
     , r.effective_at
@@ -113,7 +152,7 @@ SELECT
     , r.reservation_duration
     , FALSE AS is_canceled
 FROM requests AS r LEFT JOIN requests_canceled ON r.id = requests_canceled.request_id
-ORDER BY effective_at, machine_id DESC  
+ORDER BY effective_at, goody_id DESC  
 ; 
 
 CREATE VIEW effective_reservations AS
@@ -128,16 +167,19 @@ FROM effective_reservations
 WHERE (effective_at + reservation_duration) > NOW()
 ;
 
-/* 
- * TODO Implement proper mechanizm for detecting 
- * available machines and machines out of order. 
- */
-CREATE VIEW available_machines AS 
-SELECT machines.*, COUNT(effective_reservations.id) AS load
-FROM machines 
-    LEFT JOIN effective_reservations ON machines.id = effective_reservations.machine_id
-GROUP BY machines.id
+CREATE VIEW goodies_load AS  
+SELECT goodies.id, COUNT(effective_reservations.id) AS load
+FROM goodies 
+    LEFT JOIN effective_reservations ON goodies.id = effective_reservations.goody_id
+GROUP BY goodies.id
 ORDER BY load
+;
+
+CREATE VIEW available_machines AS 
+SELECT available_goodies.*, goodies_load.load
+FROM available_goodies 
+    JOIN goodies_load ON available_goodies.id = goodies_load.id
+WHERE type_id = (SELECT id FROM goody_types WHERE meta = 'WASHMACHIN')
 ;
 
 /*
@@ -233,14 +275,14 @@ DECLARE
     var_machine_id   SMALLINT  = (SELECT id FROM available_machines WHERE load = (SELECT MIN(load) FROM available_machines) LIMIT 1);
     var_effective_at TIMESTAMP = COALESCE(arg_effective_at, NOW());
 BEGIN
-	IF (SELECT TRUE FROM requests WHERE machine_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration) LIMIT 1) THEN
+	IF (SELECT TRUE FROM requests WHERE goody_id = var_machine_id AND (effective_at, reservation_duration) OVERLAPS (var_effective_at, arg_reservation_duration) LIMIT 1) THEN
         SELECT COALESCE(MAX(finishes_at), NOW()) INTO var_effective_at
         FROM effective_reservations
-        WHERE machine_id = var_machine_id
+        WHERE goody_id = var_machine_id
         ;
 	END IF 
 	;
-    INSERT INTO requests (id, client_id, machine_id, occured_at, effective_at, reservation_duration)
+    INSERT INTO requests (id, client_id, goody_id, occured_at, effective_at, reservation_duration)
     VALUES 
     (
           DEFAULT
