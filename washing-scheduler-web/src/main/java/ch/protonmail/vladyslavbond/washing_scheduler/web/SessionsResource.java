@@ -54,6 +54,9 @@ public class SessionsResource extends WashingSchedulerResource {
 	@POST
 	@Path("create/{service}")
 	public Response create(@PathParam("service") WashingSchedulerOAuthService service) throws Exception {
+		/*
+		 * Delegate command to particular OAuth service provider (API).
+		 */
 		return Response
 				.seeOther(new URI(service.getAuthorizationUrl(Token.empty())))
 				.build();
@@ -64,16 +67,27 @@ public class SessionsResource extends WashingSchedulerResource {
 	@Produces(MediaType.TEXT_PLAIN)
 	public Response callback(@PathParam("service") WashingSchedulerOAuthService service, @QueryParam("code") String code) throws JsonProcessingException, IOException 
 	{
+		/*
+		 * Send OAuth request to remote service.
+		 */
 		Token accessToken = service.getAccessToken(Token.empty(), new Verifier(code));
 		OAuthRequest request = new OAuthRequest(Verb.GET, service.getProperty("profile"));
 		service.signRequest(accessToken, request);
 		org.scribe.model.Response oauthResponse = request.send();
 		
+		/*
+		 * Terminate program if something went wrong.
+		 */
 		if (!oauthResponse.isSuccessful()) 
 		{
 			return Response.serverError().build();
 		}
 		
+		/*
+		 * Read remote service's answer, if everything went fine this far.
+		 * Update database if necessary and create user session, 
+		 * using internal id of the application.
+		 */
 		final String externalId = getObjectMapper().readTree(oauthResponse.getBody()).get("id").asText();
 		try 
 		(
@@ -85,6 +99,10 @@ public class SessionsResource extends WashingSchedulerResource {
 				CallableStatement statement = connection.prepareCall("{CALL user_update(?, ?, ?, ?)}");
 			) 
 			{
+				/*
+				 * Create new user using data from remote service,
+				 * or update an existing one.
+				 */
 				statement.setObject(1, service.name());
 				statement.setObject(2, externalId);
 				statement.setObject(3, accessToken.getToken());
@@ -92,47 +110,42 @@ public class SessionsResource extends WashingSchedulerResource {
 				
 				statement.execute();
 				
+				/*
+				 * Create session using internal user id,
+				 * returned by the executed database stored procedure.
+				 */
 				Short internalId = statement.getShort(4);
 				if (internalId == null || internalId <= 0)
 				{
 					throw new RuntimeException("Internal id is missing.");
 				}
 				HttpSession session = getHttpSession(false);
-				URI myCallback = null;
 				if (session != null) 
 				{
-					myCallback = (URI)session.getAttribute("myCallback");
 					session.invalidate();
 				}
 				session = getHttpSession();
-				session.setAttribute("id", internalId);
-				if (myCallback != null) 
-				{
-					getHttpServletResponse().setHeader("Retry-After", "6");
-					return Response.temporaryRedirect(myCallback).build();
-				}
+				session.setAttribute(USER_ID_ATTRIBUTE_KEY, internalId);
 				return Response.seeOther(REQUESTS_CREATE).build();	
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw new WebApplicationException("Failed to log in using OAuth.", e);
 		}
+		return Response.serverError().build();
 	}
 
 	@GET
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
 	public Response create() throws IOException {
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
-		return Response.ok().build();
+		return getDefaultResponse();
 	}
 	
 	@GET
 	@Path("destroy")
 	@Produces(MediaType.TEXT_HTML)
 	public Response getSessionTerminationForm() throws IOException {
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
-		return Response.ok().build();
+		return getDefaultResponse();
 	}
 	
 	@POST

@@ -15,6 +15,10 @@ public class RootResource extends WashingSchedulerResource {
 	@GET
 	@Produces(MediaType.TEXT_HTML)
 	public Response home() throws IOException {
+		final Response redirect = this.getRedirectionResponseIfNotAuthenticated();
+		if (redirect != null) {
+			return redirect;
+		}
 		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse(), "/requests/create");
 		return Response.ok().build();
 	}

@@ -173,11 +173,9 @@ public class RequestsResource extends WashingSchedulerResource {
 		 * Check if the user is authenticated to the system.
 		 * If not, redirect them.
 		 */
-		if (getHttpSession() == null || getHttpSession().getAttribute("id") == null) {
-			getHttpSession().setAttribute("myCallback", REQUESTS_CREATE);
-			return Response
-					.seeOther(new URI(WashingSchedulerOAuthService.FACEBOOK.getAuthorizationUrl(Token.empty())))
-					.build();
+		final Response redirect = getRedirectionResponseIfNotAuthenticated();
+		if (redirect != null) {
+			return redirect;
 		}
 		
 		/*
@@ -210,7 +208,7 @@ public class RequestsResource extends WashingSchedulerResource {
 		 */
 		try (Connection connection = getConnection();) {
 			try (CallableStatement statement = connection.prepareCall("{CALL request_create(?::SMALLINT, ?::TIMESTAMP, ?::INTERVAL)}");) {
-				statement.setObject(1, getHttpSession().getAttribute("id"));
+				statement.setObject(1, getHttpSession().getAttribute(USER_ID_ATTRIBUTE_KEY));
 				if (effectiveAt == null || effectiveAt.toLocalDateTime().isBefore(LocalDateTime.now())) {
 					effectiveAt = java.sql.Timestamp.valueOf(LocalDateTime.now());
 				}
@@ -231,7 +229,10 @@ public class RequestsResource extends WashingSchedulerResource {
 	@Path("create")
 	@Produces(MediaType.TEXT_HTML)
 	public Response create() throws IOException {
-		getViewFactory().process(getHttpServletRequest(), getHttpServletResponse());
-		return Response.ok().build();
+		final Response redirect = getRedirectionResponseIfNotAuthenticated();
+		if (redirect != null) {
+			return redirect;
+		}
+		return getDefaultResponse();
 	}
 }
