@@ -18,7 +18,7 @@
 			</tr>
 			<tr data-th-each='request : ${requests}'>
 				<td data-th-text="${request.get('id')}">1</td>
-				<td ><a data-th-href="@{/machines/{id}(id=${request.get('machine_id')})}" data-th-text="${request.get('machine_id')}">1</a></td>
+				<td data-th-text="${request.get('machine_id')}">1</td>
 				<td ><a target='_blank' data-th-href="${request.get('link')}" data-th-text="${request.get('name')}">Vasya Pupkin</a></td>
 				<td data-th-text="${request.get('occured_at')}">Today.</td>
 				<td data-th-text="${request.get('effective_at')}">Today.</td>
