@@ -30,11 +30,6 @@ main, aside
   margin: 1%;
 }
 
-.queue table, .queue tr, .queue td, .queue th
-{
-  border: 1px solid black;  
-}
-
 aside 
 {
   text-align: center;
@@ -49,3 +44,50 @@ body > footer
   color: gray;
   bottom: 0px;
 }
+
+
+
+
+
+
+
+.queue tr, .queue td, .queue th
+{
+  padding: 1%;
+  border-bottom: 1px solid black;
+  border-right: 1px solid black;
+  border-top: 1px solid lightgrey;
+  border-left: 1px solid lightgrey;
+}
+
+.queue tr:nth-of-type(even), .queue tr:nth-of-type(even) td { 
+  background: BlanchedAlmond ; 
+  border-top: 1px solid white;
+  border-left: 1px solid white;
+}
+
+.queue table
+{
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid lightgrey;
+  border-left: 1px solid lightgrey;
+}
+
+
+
+
+@media 
+only screen and (max-width: 760px),
+(min-device-width: 320px) and (max-device-width: 1024px)  
+{
+  .queue tr, .queue td, .queue thead, .queue tbody, .queue th
+  {
+    display: block;
+  }
+
+  .queue tr
+  {
+    margin-bottom: 6%;
+  }
+}	
